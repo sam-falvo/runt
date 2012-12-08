@@ -40,11 +40,6 @@ I WANT: to type in a shell command "run fooBar" to run all integration tests col
 SO THAT: I can integrate my integration tests with the build environment of my choice.
 
   AS A: implementor
-  I WANT: TX to produce a meaningful error if fooBar proves anything except a directory or a link thereto
-  SO THAT: we can avoid special-case logic for handling individual test files.
-  NOTE: Remember that tests are shell executables.  "run fooBar.exe" is the same as just typing "fooBar.exe".
-
-  AS A: implementor
   I WANT: TX to iterate through all the directory entries in fooBar, recursively
   SO THAT: we can decide which are executable files and which are not.
   NOTE: ioutil.ReadDir() is fastest way to make this happen.  But, we may need to send a pointer to a procedure to allow stubbing.
