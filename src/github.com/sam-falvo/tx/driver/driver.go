@@ -82,6 +82,20 @@ func (my *Driver) Executables() []string {
 	return my.executables
 }
 
+// NextExecutable dequeues the next executable to run, if any remain.
+func (my *Driver) NextExecutable() (n string, ok bool) {
+	n = ""
+	ok = false
+	if len(my.executables) == 0 {
+		return
+	}
+
+	n = my.executables[0]
+	my.executables = my.executables[1:len(my.executables)]
+	ok = true
+	return
+}
+
 // UseStat tells the driver which implementation of the stat system call to use.
 // By default, it resorts to using os.Stat().  However, this call cannot be
 // intercepted for unit-testing purposes; thus, unit tests rely on UseStat() to

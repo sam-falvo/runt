@@ -221,3 +221,49 @@ func TestDriverMustQualifyExecutablePathNames(t *testing.T) {
 	})
 }
 
+
+//	AS A: implementor
+//	I WANT: TX to run each candidate exactly once.
+//	SO THAT: we avoid duplicate invokations of any given test.
+
+
+func TestDriverMustDispatchOneNameAtATime(t *testing.T) {
+	expected := []string{ "blah/e", "blah/f", "blah/c/g", "blah/d/h" }
+
+	withSetup(deepReadDir, aDir("blah"), nil, func (d *Driver) {
+		_ = d.UseBatch("blah")
+		n, ok := d.NextExecutable()
+		if !ok {
+			t.Errorf("Expected dequeue to be OK")
+		}
+		if !isElementOf(expected, n) {
+			t.Errorf("Expected %s to be member of %#v", n, expected)
+		}
+		n, ok = d.NextExecutable()
+		if !ok {
+			t.Errorf("Expected dequeue to be OK")
+		}
+		if !isElementOf(expected, n) {
+			t.Errorf("Expected %s to be member of %#v", n, expected)
+		}
+		n, ok = d.NextExecutable()
+		if !ok {
+			t.Errorf("Expected dequeue to be OK")
+		}
+		if !isElementOf(expected, n) {
+			t.Errorf("Expected %s to be member of %#v", n, expected)
+		}
+		n, ok = d.NextExecutable()
+		if !ok {
+			t.Errorf("Expected dequeue to be OK")
+		}
+		if !isElementOf(expected, n) {
+			t.Errorf("Expected %s to be member of %#v", n, expected)
+		}
+		_, ok = d.NextExecutable()
+		if ok {
+			t.Errorf("We've exhausted the queue; this shouldn't be OK")
+		}
+	})
+}
+

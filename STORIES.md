@@ -5,7 +5,7 @@ TO DO
 -----
 
 AS A: developer
-I WANT: "run fooBar" to perform no action when directory fooBar contains no executables
+I WANT: "runt fooBar" to perform no action when directory fooBar contains no executables
 SO THAT: we maintain the principle of least surprise.
 
 AS A: developer
@@ -35,16 +35,11 @@ SO THAT: I can keep track of successful vs. unsuccessful test runs.
 DOING
 -----
 
+
+DONE
+----
+
 AS A: developer
-I WANT: to type in a shell command "run fooBar" to run all integration tests collectively part of the fooBar suite
+I WANT: to type in a shell command "runt fooBar" to run all integration tests collectively part of the fooBar suite
 SO THAT: I can integrate my integration tests with the build environment of my choice.
-
-  AS A: implementor
-  I WANT: TX to construct a model of an executable for each executable it finds
-  SO THAT: we can make unit testing easier by letting us stub or mock executables.
-
-  AS A: implementor
-  I WANT: TX to run each candidate exactly once.
-  SO THAT: we avoid duplicate invokations of any given test.
-
 
