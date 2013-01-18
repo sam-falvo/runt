@@ -232,35 +232,16 @@ func TestDriverMustDispatchOneNameAtATime(t *testing.T) {
 
 	withSetup(deepReadDir, aDir("blah"), nil, func (d *Driver) {
 		_ = d.UseBatch("blah")
-		n, ok := d.NextExecutable()
-		if !ok {
-			t.Errorf("Expected dequeue to be OK")
+		for i := 0; i < len(expected); i++ {
+			n, ok := d.NextExecutable()
+			if !ok {
+				t.Errorf("Expected dequeue to be OK")
+			}
+			if !isElementOf(expected, n) {
+				t.Errorf("Expected %s to be member of %#v", n, expected)
+			}
 		}
-		if !isElementOf(expected, n) {
-			t.Errorf("Expected %s to be member of %#v", n, expected)
-		}
-		n, ok = d.NextExecutable()
-		if !ok {
-			t.Errorf("Expected dequeue to be OK")
-		}
-		if !isElementOf(expected, n) {
-			t.Errorf("Expected %s to be member of %#v", n, expected)
-		}
-		n, ok = d.NextExecutable()
-		if !ok {
-			t.Errorf("Expected dequeue to be OK")
-		}
-		if !isElementOf(expected, n) {
-			t.Errorf("Expected %s to be member of %#v", n, expected)
-		}
-		n, ok = d.NextExecutable()
-		if !ok {
-			t.Errorf("Expected dequeue to be OK")
-		}
-		if !isElementOf(expected, n) {
-			t.Errorf("Expected %s to be member of %#v", n, expected)
-		}
-		_, ok = d.NextExecutable()
+		_, ok := d.NextExecutable()
 		if ok {
 			t.Errorf("We've exhausted the queue; this shouldn't be OK")
 		}

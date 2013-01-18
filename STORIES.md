@@ -43,3 +43,15 @@ AS A: developer
 I WANT: to type in a shell command "runt fooBar" to run all integration tests collectively part of the fooBar suite
 SO THAT: I can integrate my integration tests with the build environment of my choice.
 
+	AS A: implementor
+	I WANT: TX to produce a meaningful error if batch parameter proves anything except a directory or a link thereto
+	SO THAT: we can avoid special-case logic for handling individual test files.
+
+	AS A: implementor
+	I WANT: runt to iterate through all the directory entries in fooBar, recursively
+	SO THAT: we can decide which are executable files and which are not.
+
+	AS A: implementor
+	I WANT: TX to run each candidate exactly once.
+	SO THAT: we avoid duplicate invokations of any given test.
+
