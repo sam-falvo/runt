@@ -11,8 +11,7 @@ import (
 
 func problem(e error) {
 	fmt.Fprintf(os.Stderr, "%s\n", e.Error())
-	fmt.Fprintf(os.Stderr, "USAGE: %s (options) batch-dir\n", os.Args[0]);
-	flag.Usage()
+	fmt.Fprintf(os.Stderr, "USAGE: %s batch-dir\n", os.Args[0]);
 	os.Exit(1)
 	panic("os.Exit() didn't os.Exit()!")
 }
