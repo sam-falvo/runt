@@ -17,13 +17,19 @@ func problem(e error) {
 }
 
 func main() {
+	var err error
+
 	d := new(driver.Driver)
 	flag.Parse()
 	args := flag.Args()
 	if len(args) < 1 {
 		problem(fmt.Errorf("You must at least provide a test batch parameter."))
 	}
-	err := d.UseBatch(args[0])
+	err = d.UseBatch(args[0])
+	if err != nil {
+		problem(err)
+	}
+	err = d.LaunchSuites()
 	if err != nil {
 		problem(err)
 	}

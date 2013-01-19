@@ -6,8 +6,10 @@
 package driver
 
 import "fmt"
+import "io"
 import "io/ioutil"
 import "os"
+import "os/exec"
 
 
 // statFn is a prototype matching os.Stat().  Not used for normal code,
@@ -26,10 +28,84 @@ type Driver struct {
 	executables []string
 }
 
+// ClientResult structures keeps child process command names and output results
+// together for convenient reference.
+type ChildResult struct {
+	executableName string
+	executableError error
+	stdout	[][]byte
+	stderr	[][]byte
+}
+
 // DirectoryExpectedError represents an error condition where a directory name was
 // specified by a caller, but it actually refers to a non-directory object, such as
 // an object or socket.
 var DirectoryExpectedError error = fmt.Errorf("Directory expected")
+
+func grab_feedback(stream io.ReadCloser, results chan [][]byte) {
+	list := make([][]byte, 0)
+	buf := make([]byte, 4096)
+	for n, err := stream.Read(buf); (err == nil) && (n > 0); {
+		list = append(list, buf)
+		buf = make([]byte, 4096)
+		n, err = stream.Read(buf)
+	}
+	results <- list
+}
+
+func launchExecutable(path string, sem chan bool, results chan<- *ChildResult) {
+	var stdout, stderr io.ReadCloser
+
+	cr := &ChildResult { path, nil, nil, nil, }
+
+	sem <- true
+	defer func() { _ = <-sem } ()
+
+	cmd := exec.Command(path)
+	stdout, cr.executableError = cmd.StdoutPipe()
+	if cr.executableError != nil {
+		results <- cr
+		return
+	}
+
+	stderr, cr.executableError = cmd.StderrPipe()
+	if cr.executableError != nil {
+		results <- cr
+		return
+	}
+
+	cmd.Start()
+	so := make(chan [][]byte)
+	se := make(chan [][]byte)
+	go grab_feedback(stdout, so)
+	go grab_feedback(stderr, se)
+	cr.stdout = <-so
+	cr.stderr = <-se
+	cr.executableError = cmd.Wait()
+	results <- cr
+}
+
+func (my *Driver) LaunchSuites() error {
+	var err error
+
+	sem := make(chan bool, 4)
+	resultsChannel := make(chan *ChildResult)
+	for _, exe := range my.executables {
+		go launchExecutable(exe, sem, resultsChannel)
+	}
+
+	results := make([]*ChildResult, 0)
+	err = nil
+	for len(results) < len(my.executables) {
+		r := <-resultsChannel
+		if r.executableError != nil && err == nil {
+			err = r.executableError
+		}
+		results = append(results, r)
+	}
+
+	return err
+}
 
 // UseBatch specifies the batch of tests to work with.  The parameter names a
 // directory in the local filesystem, within which zero or more test executables
