@@ -5,11 +5,14 @@
 // instances as per the user's provided configuration.
 package driver
 
+import "bytes"
+import "encoding/json"
 import "fmt"
 import "io"
 import "io/ioutil"
 import "os"
 import "os/exec"
+import "time"
 
 
 // launchFn is a prototype matching launchExecutable(), defined below.
@@ -32,6 +35,7 @@ type Driver struct {
 	readdir		readDirFn
 	launchExe	launchFn
 	executables	[]string
+	results		[]*ChildResult
 }
 
 // ClientResult structures keeps child process command names and output results
@@ -43,16 +47,38 @@ type ChildResult struct {
 	stderr	[][]byte
 }
 
+// JsonEventDesc structures keeps the same information as ChildResult structures,
+// but in a way that is suitable for marshaling into JSON format.  These structures
+// are intermittent; they exist only while generating JSON output.
+type JsonEventDesc struct {
+	Timestamp	time.Time `json:"@timestamp"`
+	Tags		[]string `json:"@tags"`
+	Type		string `json:"@type"`
+	Source		string `json:"@source"`
+	Fields		JsonEventFieldsDesc `json:"@fields"`
+	Message		string `json:"@message"`
+}
+
+// JsonEventFieldsDesc structures contain the stdin and stdout data for each executable
+// dispatched.
+type JsonEventFieldsDesc struct {
+	Executable	string
+	Stdout		string
+	Stderr		string
+}
+
 // DirectoryExpectedError represents an error condition where a directory name was
 // specified by a caller, but it actually refers to a non-directory object, such as
 // an object or socket.
 var DirectoryExpectedError error = fmt.Errorf("Directory expected")
 
 func grab_feedback(stream io.ReadCloser, results chan [][]byte) {
+	// TODO: Somehow, we need to return the err from this procedure, should
+	// one occur.  It should be included in the resulting test run log.
 	list := make([][]byte, 0)
 	buf := make([]byte, 4096)
 	for n, err := stream.Read(buf); (err == nil) && (n > 0); {
-		list = append(list, buf)
+		list = append(list, buf[:n])
 		buf = make([]byte, 4096)
 		n, err = stream.Read(buf)
 	}
@@ -108,11 +134,11 @@ func (my *Driver) LaunchSuites() error {
 		go launchExe(my, exe, sem, resultsChannel)
 	}
 
-	results := make([]*ChildResult, 0)
+	my.results = make([]*ChildResult, 0)
 	err = nil
-	for len(results) < len(my.executables) {
+	for len(my.results) < len(my.executables) {
 		r := <-resultsChannel
-		results = append(results, r)
+		my.results = append(my.results, r)
 	}
 
 	return err
@@ -204,11 +230,11 @@ func (my *Driver) UseReadDir(rd readDirFn) {
 	my.readdir = rd
 }
 
-// UseLauchExecutable tells the driver to use a specific procedure to launch
+// UseLaunchExecutable tells the driver to use a specific procedure to launch
 // an executable.  This allows test cases to establish unique test success
 // and failure scenarios without having to invoke the overhead of POSIX
 // functionality.
-func (my *Driver) UseLauchExecutable(l launchFn) {
+func (my *Driver) UseLaunchExecutable(l launchFn) {
 	my.launchExe = l
 }
 
@@ -236,5 +262,59 @@ func launchExe(d *Driver, path string, sem chan bool, results chan<- *ChildResul
 	} else {
 		launchExecutable(path, sem, results)
 	}
+}
+
+// jsonEventFromResult does as its name implies.
+func jsonEventFromResult(r *ChildResult) *JsonEventDesc {
+	jf := JsonEventFieldsDesc {
+		r.executableName,
+		string(bytes.Join(r.stdout, []byte{})),
+		string(bytes.Join(r.stderr, []byte{})),
+	}
+
+	s := "Command completed successfully."
+	if r.executableError != nil {
+		s = fmt.Sprintf("Error: %s", r.executableError)
+	}
+
+	j := &JsonEventDesc {
+		time.Now(),
+		[]string{},
+		"ShellCommand",
+		"Runt Demo",
+		jf,
+		s,
+	}
+
+	return j
+}
+
+// For each ChildResult, instantiate a JsonEventDesc and any subordinate data
+// structures.
+func (my *Driver) mapChildResultsToJsonDescs() (jds []*JsonEventDesc) {
+	jds = make([]*JsonEventDesc, len(my.results))
+	for i, v := range my.results {
+		jds[i] = jsonEventFromResult(v)
+	}
+	return
+}
+
+// JsonEvents yields the result of test execution as an array of JSON event structures.
+// This allows runt to be used with such tools as Logstash and Kibana.
+func (my *Driver) JsonEvents() (events []string, e error) {
+	var jsonBytes []byte
+
+	jds := my.mapChildResultsToJsonDescs()
+	events = make([]string, len(jds))
+	for i, v := range jds {
+		jsonBytes, e = json.Marshal(v)
+		if e != nil {
+			e = fmt.Errorf("Cannot translate to JSON: %#v (reason: %#v)", jds[i], e)
+			return
+		}
+		events[i] = string(jsonBytes)
+	}
+
+	return
 }
 

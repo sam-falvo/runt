@@ -280,7 +280,7 @@ func myLaunchExecutable(path string, sem chan bool, results chan<- *ChildResult)
 func TestFailedProcessesMustNotFailDriver(t *testing.T) {
 	withSetup(deepReadDir, aDir("blah"), nil, func (d *Driver) {
 		_ = d.UseBatch("blah")
-		d.UseLauchExecutable(myLaunchExecutable)
+		d.UseLaunchExecutable(myLaunchExecutable)
 		err := d.LaunchSuites()
 		if err != nil {
 			t.Errorf("Failing test process must not cause Runt to fail too")
@@ -291,4 +291,22 @@ func TestFailedProcessesMustNotFailDriver(t *testing.T) {
 //	AS A: implementor
 //	I WANT: output to be recordable in json_event format
 //	SO THAT: we can use kibana as a visualization interface if we wanted.
+
+func TestDriverMustReportJsonEventForResults(t *testing.T) {
+	withSetup(deepReadDir, aDir("blah"), nil, func (d *Driver) {
+		_ = d.UseBatch("blah")
+		d.UseLaunchExecutable(myLaunchExecutable)
+		_ = d.LaunchSuites()
+		jsonEvents, err := d.JsonEvents()
+		if err != nil {
+			t.Errorf("Unexpected error: %#v", err)
+		}
+		for _, v := range jsonEvents {
+			// Just use a heuristic.  If the string starts with {, assume it's JSON.
+			if v[0] != '{' {
+				t.Errorf("Definitely not JSON: %#v", v)
+			}
+		}
+	})
+}
 

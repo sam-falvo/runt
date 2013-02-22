@@ -33,5 +33,12 @@ func main() {
 	if err != nil {
 		problem(err)
 	}
+	j, err := d.JsonEvents()
+	if err != nil {
+		problem(err)
+	}
+	for _, v := range j {
+		fmt.Println(v)
+	}
 }
 
