@@ -12,6 +12,11 @@ import "os"
 import "os/exec"
 
 
+// launchFn is a prototype matching launchExecutable(), defined below.
+// An engineer writing tests for the test driver would use customized
+// launch procedures to establish unique test success/fail scenarios.
+type launchFn func (string, chan bool, chan<- *ChildResult)
+
 // statFn is a prototype matching os.Stat().  Not used for normal code,
 // statFn proves useful for configuring a customized stat()-like behavior for
 // the purposes of testing edge cases easily.  It, in effect, isolates the driver
@@ -23,9 +28,10 @@ type readDirFn func (string) ([]os.FileInfo, error)
 
 // This type represents a single test runner instance.
 type Driver struct {
-	stat	statFn
-	readdir	readDirFn
-	executables []string
+	stat		statFn
+	readdir		readDirFn
+	launchExe	launchFn
+	executables	[]string
 }
 
 // ClientResult structures keeps child process command names and output results
@@ -99,16 +105,13 @@ func (my *Driver) LaunchSuites() error {
 	sem := make(chan bool, 4)
 	resultsChannel := make(chan *ChildResult)
 	for _, exe := range my.executables {
-		go launchExecutable(exe, sem, resultsChannel)
+		go launchExe(my, exe, sem, resultsChannel)
 	}
 
 	results := make([]*ChildResult, 0)
 	err = nil
 	for len(results) < len(my.executables) {
 		r := <-resultsChannel
-		if r.executableError != nil && err == nil {
-			err = r.executableError
-		}
 		results = append(results, r)
 	}
 
@@ -201,6 +204,14 @@ func (my *Driver) UseReadDir(rd readDirFn) {
 	my.readdir = rd
 }
 
+// UseLauchExecutable tells the driver to use a specific procedure to launch
+// an executable.  This allows test cases to establish unique test success
+// and failure scenarios without having to invoke the overhead of POSIX
+// functionality.
+func (my *Driver) UseLauchExecutable(l launchFn) {
+	my.launchExe = l
+}
+
 // stat switches between the driver-specific stat procedure or os.Stat.
 func stat(d *Driver, p string) (os.FileInfo, error) {
 	if d.stat != nil {
@@ -215,5 +226,15 @@ func readdir(d *Driver, p string) ([]os.FileInfo, error) {
 		return d.readdir(p)
 	}
 	return ioutil.ReadDir(p)
+}
+
+// launchExe switches between the driver-default launchExecutable procedure or one
+// provided by a unit test.
+func launchExe(d *Driver, path string, sem chan bool, results chan<- *ChildResult) {
+	if d.launchExe != nil {
+		d.launchExe(path, sem, results)
+	} else {
+		launchExecutable(path, sem, results)
+	}
 }
 

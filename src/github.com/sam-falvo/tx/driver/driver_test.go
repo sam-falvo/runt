@@ -5,6 +5,7 @@ package driver
 import "os"
 import "testing"
 import "time"
+import "fmt"
 
 type myFileInfo struct {
 	name string
@@ -227,7 +228,7 @@ func TestDriverMustQualifyExecutablePathNames(t *testing.T) {
 //	SO THAT: we avoid duplicate invokations of any given test.
 
 
-func TestDriverMustDispatchOneNameAtATime(t *testing.T) {
+func TestDriverMustDispatchCandidatesExactlyOnce(t *testing.T) {
 	expected := []string{ "blah/e", "blah/f", "blah/c/g", "blah/d/h" }
 
 	withSetup(deepReadDir, aDir("blah"), nil, func (d *Driver) {
@@ -247,4 +248,47 @@ func TestDriverMustDispatchOneNameAtATime(t *testing.T) {
 		}
 	})
 }
+
+// AS A: developer
+// I WANT: the opportunity to see the stdout and stderr streams of any test, successful or not
+// SO THAT: I can diagnose problems without resorting to application-fragile tooling.
+
+//	AS A: implementor
+//	I WANT: a failed test process to not kill the Runt process
+//	SO THAT: we collect a complete data set to log.
+
+func myLaunchExecutable(path string, sem chan bool, results chan<- *ChildResult) {
+	var err error
+
+	sem <- true
+	defer func() { _ = <-sem } ()
+
+	if path == "blah/e" {
+		err = fmt.Errorf("ZOMG!11!!1~  Teh testses did it failjured!.")
+	}
+
+	cr := &ChildResult {
+		path,
+		err,
+		[][]byte{[]byte("stdout here")},
+		nil,
+	}
+
+	results <- cr
+}
+
+func TestFailedProcessesMustNotFailDriver(t *testing.T) {
+	withSetup(deepReadDir, aDir("blah"), nil, func (d *Driver) {
+		_ = d.UseBatch("blah")
+		d.UseLauchExecutable(myLaunchExecutable)
+		err := d.LaunchSuites()
+		if err != nil {
+			t.Errorf("Failing test process must not cause Runt to fail too")
+		}
+	})
+}
+
+//	AS A: implementor
+//	I WANT: output to be recordable in json_event format
+//	SO THAT: we can use kibana as a visualization interface if we wanted.
 

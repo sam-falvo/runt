@@ -11,13 +11,13 @@ SO THAT: I can keep track of successful vs. unsuccessful test runs.
 QUEUED
 ------
 
-AS A: developer
-I WANT: the opportunity to see the stdout and stderr streams of any test, successful or not
-SO THAT: I can diagnose problems without resorting to applicaion-fragile tooling.
-
-
 DOING
 -----
+
+AS A: developer
+I WANT: the opportunity to see the stdout and stderr streams of any test, successful or not
+SO THAT: I can diagnose problems without resorting to application-fragile tooling.
+
 
 DONE
 ----
