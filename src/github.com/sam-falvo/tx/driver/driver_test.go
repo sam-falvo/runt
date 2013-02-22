@@ -8,50 +8,50 @@ import "time"
 import "fmt"
 
 type myFileInfo struct {
-	name string
-	mode os.FileMode
+	name  string
+	mode  os.FileMode
 	isDir bool
-};
+}
 
-func (f *myFileInfo) Name() string { return f.name }
-func (f *myFileInfo) Mode() os.FileMode { return f.mode }
-func (f *myFileInfo) IsDir() bool { return f.isDir }
-func (f *myFileInfo) Sys() interface{} { return nil }
+func (f *myFileInfo) Name() string       { return f.name }
+func (f *myFileInfo) Mode() os.FileMode  { return f.mode }
+func (f *myFileInfo) IsDir() bool        { return f.isDir }
+func (f *myFileInfo) Sys() interface{}   { return nil }
 func (f *myFileInfo) ModTime() time.Time { return time.Now() }
-func (f *myFileInfo) Size() int64 { return 0 }
+func (f *myFileInfo) Size() int64        { return 0 }
 
-var fileExistsButNotADirectory = myFileInfo {
-	name: "don't care",
-	mode: 0644,
+var fileExistsButNotADirectory = myFileInfo{
+	name:  "don't care",
+	mode:  0644,
 	isDir: false,
 }
 
-var validDirectory = myFileInfo {
-	name: "don't care",
-	mode: 0644|os.ModeDir,
+var validDirectory = myFileInfo{
+	name:  "don't care",
+	mode:  0644 | os.ModeDir,
 	isDir: true,
 }
 
 func aDir(fn string) *myFileInfo {
-	return &myFileInfo {
-		name: fn,
-		mode: 0644|os.ModeDir,
+	return &myFileInfo{
+		name:  fn,
+		mode:  0644 | os.ModeDir,
 		isDir: true,
 	}
 }
 
 func anExec(fn string) *myFileInfo {
-	return &myFileInfo {
-		name: fn,
-		mode: 0755,
+	return &myFileInfo{
+		name:  fn,
+		mode:  0755,
 		isDir: false,
 	}
 }
 
 func aFile(fn string) *myFileInfo {
-	return &myFileInfo {
-		name: fn,
-		mode: 0644,
+	return &myFileInfo{
+		name:  fn,
+		mode:  0644,
 		isDir: false,
 	}
 }
@@ -63,7 +63,7 @@ func emptyDirectory(_ string) ([]os.FileInfo, error) {
 func basicReadDir(p string) (fis []os.FileInfo, e error) {
 	switch p {
 	case "blah":
-		fis = []os.FileInfo {
+		fis = []os.FileInfo{
 			aFile("a"),
 			aFile("b"),
 			aDir("c"),
@@ -72,7 +72,7 @@ func basicReadDir(p string) (fis []os.FileInfo, e error) {
 			anExec("f"),
 		}
 	default:
-		fis = []os.FileInfo {}
+		fis = []os.FileInfo{}
 	}
 	e = nil
 	return
@@ -81,7 +81,7 @@ func basicReadDir(p string) (fis []os.FileInfo, e error) {
 func deepReadDir(p string) (fis []os.FileInfo, e error) {
 	switch p {
 	case "blah":
-		fis = []os.FileInfo {
+		fis = []os.FileInfo{
 			aFile("a"),
 			aFile("b"),
 			aDir("c"),
@@ -90,17 +90,17 @@ func deepReadDir(p string) (fis []os.FileInfo, e error) {
 			anExec("f"),
 		}
 	case "blah/c":
-		fis = []os.FileInfo {
+		fis = []os.FileInfo{
 			anExec("g"),
 			aFile("gg"),
 		}
 	case "blah/d":
-		fis = []os.FileInfo {
+		fis = []os.FileInfo{
 			anExec("h"),
 			aFile("hh"),
 		}
 	default:
-		fis = []os.FileInfo {}
+		fis = []os.FileInfo{}
 	}
 	e = nil
 	return
@@ -116,11 +116,11 @@ func isElementOf(haystack []string, needle string) (found bool) {
 	return
 }
 
-type testProc func (d *Driver)
+type testProc func(d *Driver)
 
 func withSetup(rd readDirFn, fiStat os.FileInfo, eStat error, f testProc) {
 	d := new(Driver)
-	d.UseStat(func (_ string) (fi os.FileInfo, e error) {
+	d.UseStat(func(_ string) (fi os.FileInfo, e error) {
 		return fiStat, eStat
 	})
 	d.UseReadDir(rd)
@@ -179,13 +179,13 @@ func TestDriverMustIsolateExecutablesInBatchDir(t *testing.T) {
 func TestDriverMustRecurseIntoSubdirectories(t *testing.T) {
 	pathsRead := make([]string, 0, 4)
 	withSetup(
-		func (path string) (fis []os.FileInfo, e error) {
+		func(path string) (fis []os.FileInfo, e error) {
 			pathsRead = append(pathsRead, path)
 			return basicReadDir(path)
 		},
 		aDir("blah"),
 		nil,
-		func (d *Driver) {
+		func(d *Driver) {
 			_ = d.UseBatch("blah")
 			if len(pathsRead) != 3 {
 				t.Errorf("Expected to traverse 3 directories; only %d traversed (%#v).", len(pathsRead), pathsRead)
@@ -204,7 +204,7 @@ func TestDriverMustRecurseIntoSubdirectories(t *testing.T) {
 }
 
 func TestDriverMustQualifyExecutablePathNames(t *testing.T) {
-	withSetup(deepReadDir, aDir("blah"), nil, func (d *Driver) {
+	withSetup(deepReadDir, aDir("blah"), nil, func(d *Driver) {
 		_ = d.UseBatch("blah")
 		es := d.Executables()
 		if !isElementOf(es, "blah/e") {
@@ -222,16 +222,14 @@ func TestDriverMustQualifyExecutablePathNames(t *testing.T) {
 	})
 }
 
-
 //	AS A: implementor
 //	I WANT: TX to run each candidate exactly once.
 //	SO THAT: we avoid duplicate invokations of any given test.
 
-
 func TestDriverMustDispatchCandidatesExactlyOnce(t *testing.T) {
-	expected := []string{ "blah/e", "blah/f", "blah/c/g", "blah/d/h" }
+	expected := []string{"blah/e", "blah/f", "blah/c/g", "blah/d/h"}
 
-	withSetup(deepReadDir, aDir("blah"), nil, func (d *Driver) {
+	withSetup(deepReadDir, aDir("blah"), nil, func(d *Driver) {
 		_ = d.UseBatch("blah")
 		for i := 0; i < len(expected); i++ {
 			n, ok := d.NextExecutable()
@@ -261,13 +259,13 @@ func myLaunchExecutable(path string, sem chan bool, results chan<- *ChildResult)
 	var err error
 
 	sem <- true
-	defer func() { _ = <-sem } ()
+	defer func() { _ = <-sem }()
 
 	if path == "blah/e" {
 		err = fmt.Errorf("ZOMG!11!!1~  Teh testses did it failjured!.")
 	}
 
-	cr := &ChildResult {
+	cr := &ChildResult{
 		path,
 		err,
 		[][]byte{[]byte("stdout here")},
@@ -278,7 +276,7 @@ func myLaunchExecutable(path string, sem chan bool, results chan<- *ChildResult)
 }
 
 func TestFailedProcessesMustNotFailDriver(t *testing.T) {
-	withSetup(deepReadDir, aDir("blah"), nil, func (d *Driver) {
+	withSetup(deepReadDir, aDir("blah"), nil, func(d *Driver) {
 		_ = d.UseBatch("blah")
 		d.UseLaunchExecutable(myLaunchExecutable)
 		err := d.LaunchSuites()
@@ -293,7 +291,7 @@ func TestFailedProcessesMustNotFailDriver(t *testing.T) {
 //	SO THAT: we can use kibana as a visualization interface if we wanted.
 
 func TestDriverMustReportJsonEventForResults(t *testing.T) {
-	withSetup(deepReadDir, aDir("blah"), nil, func (d *Driver) {
+	withSetup(deepReadDir, aDir("blah"), nil, func(d *Driver) {
 		_ = d.UseBatch("blah")
 		d.UseLaunchExecutable(myLaunchExecutable)
 		_ = d.LaunchSuites()
@@ -309,4 +307,3 @@ func TestDriverMustReportJsonEventForResults(t *testing.T) {
 		}
 	})
 }
-

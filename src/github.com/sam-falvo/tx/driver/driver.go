@@ -14,57 +14,56 @@ import "os"
 import "os/exec"
 import "time"
 
-
 // launchFn is a prototype matching launchExecutable(), defined below.
 // An engineer writing tests for the test driver would use customized
 // launch procedures to establish unique test success/fail scenarios.
-type launchFn func (string, chan bool, chan<- *ChildResult)
+type launchFn func(string, chan bool, chan<- *ChildResult)
 
 // statFn is a prototype matching os.Stat().  Not used for normal code,
 // statFn proves useful for configuring a customized stat()-like behavior for
 // the purposes of testing edge cases easily.  It, in effect, isolates the driver
 // from the Go standard library and host operating system.
-type statFn func (string) (os.FileInfo, error)
+type statFn func(string) (os.FileInfo, error)
 
 // readDirFn is the prototye for the matching io.ioutil.ReadDir() function.
-type readDirFn func (string) ([]os.FileInfo, error)
+type readDirFn func(string) ([]os.FileInfo, error)
 
 // This type represents a single test runner instance.
 type Driver struct {
-	stat		statFn
-	readdir		readDirFn
-	launchExe	launchFn
-	executables	[]string
-	results		[]*ChildResult
+	stat        statFn
+	readdir     readDirFn
+	launchExe   launchFn
+	executables []string
+	results     []*ChildResult
 }
 
 // ClientResult structures keeps child process command names and output results
 // together for convenient reference.
 type ChildResult struct {
-	executableName string
+	executableName  string
 	executableError error
-	stdout	[][]byte
-	stderr	[][]byte
+	stdout          [][]byte
+	stderr          [][]byte
 }
 
 // JsonEventDesc structures keeps the same information as ChildResult structures,
 // but in a way that is suitable for marshaling into JSON format.  These structures
 // are intermittent; they exist only while generating JSON output.
 type JsonEventDesc struct {
-	Timestamp	time.Time `json:"@timestamp"`
-	Tags		[]string `json:"@tags"`
-	Type		string `json:"@type"`
-	Source		string `json:"@source"`
-	Fields		JsonEventFieldsDesc `json:"@fields"`
-	Message		string `json:"@message"`
+	Timestamp time.Time           `json:"@timestamp"`
+	Tags      []string            `json:"@tags"`
+	Type      string              `json:"@type"`
+	Source    string              `json:"@source"`
+	Fields    JsonEventFieldsDesc `json:"@fields"`
+	Message   string              `json:"@message"`
 }
 
 // JsonEventFieldsDesc structures contain the stdin and stdout data for each executable
 // dispatched.
 type JsonEventFieldsDesc struct {
-	Executable	string
-	Stdout		string
-	Stderr		string
+	Executable string
+	Stdout     string
+	Stderr     string
 }
 
 // DirectoryExpectedError represents an error condition where a directory name was
@@ -91,10 +90,10 @@ func grab_feedback(stream io.ReadCloser, results chan [][]byte) {
 func launchExecutable(path string, sem chan bool, results chan<- *ChildResult) {
 	var stdout, stderr io.ReadCloser
 
-	cr := &ChildResult { path, nil, nil, nil, }
+	cr := &ChildResult{path, nil, nil, nil}
 
 	sem <- true
-	defer func() { _ = <-sem } ()
+	defer func() { _ = <-sem }()
 
 	cmd := exec.Command(path)
 	stdout, cr.executableError = cmd.StdoutPipe()
@@ -152,7 +151,9 @@ func (my *Driver) LaunchSuites() error {
 // directory.  Otherwise, any lower-level errors bubble up verbatim.
 func (my *Driver) UseBatch(path string) error {
 	fi, err := stat(my, path)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	if !fi.IsDir() {
 		return DirectoryExpectedError
@@ -241,7 +242,7 @@ func (my *Driver) UseLaunchExecutable(l launchFn) {
 // stat switches between the driver-specific stat procedure or os.Stat.
 func stat(d *Driver, p string) (os.FileInfo, error) {
 	if d.stat != nil {
-		return d.stat(p);
+		return d.stat(p)
 	}
 	return os.Stat(p)
 }
@@ -266,7 +267,7 @@ func launchExe(d *Driver, path string, sem chan bool, results chan<- *ChildResul
 
 // jsonEventFromResult does as its name implies.
 func jsonEventFromResult(r *ChildResult) *JsonEventDesc {
-	jf := JsonEventFieldsDesc {
+	jf := JsonEventFieldsDesc{
 		r.executableName,
 		string(bytes.Join(r.stdout, []byte{})),
 		string(bytes.Join(r.stderr, []byte{})),
@@ -277,7 +278,7 @@ func jsonEventFromResult(r *ChildResult) *JsonEventDesc {
 		s = fmt.Sprintf("Error: %s", r.executableError)
 	}
 
-	j := &JsonEventDesc {
+	j := &JsonEventDesc{
 		time.Now(),
 		[]string{},
 		"ShellCommand",
@@ -317,4 +318,3 @@ func (my *Driver) JsonEvents() (events []string, e error) {
 
 	return
 }
-
