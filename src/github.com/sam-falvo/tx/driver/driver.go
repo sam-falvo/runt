@@ -53,6 +53,9 @@ func grab_feedback(stream io.ReadCloser, results chan [][]byte) {
 	results <- list
 }
 
+// launchExecutable interfaces to the Go standard library to invoke a
+// child process and funnels its resulting output into a ChildResult
+// instance.
 func launchExecutable(path string, sem chan bool, results chan<- *ChildResult) {
 	var stdout, stderr io.ReadCloser
 
@@ -85,6 +88,11 @@ func launchExecutable(path string, sem chan bool, results chan<- *ChildResult) {
 	results <- cr
 }
 
+// LaunchSuites dispatches control to all the children processes it knows
+// about, and collects their feedback.  It can do this in parallel, for
+// it forks each process (to a reasonable limit of course).  Results include
+// not only the executable's shell return code, but also its stdout and
+// stderr.
 func (my *Driver) LaunchSuites() error {
 	var err error
 
