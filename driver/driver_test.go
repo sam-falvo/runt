@@ -2,10 +2,12 @@
 
 package driver
 
-import "os"
-import "testing"
-import "time"
-import "fmt"
+import (
+	"os"
+	"testing"
+	"time"
+	"fmt"
+)
 
 type myFileInfo struct {
 	name  string

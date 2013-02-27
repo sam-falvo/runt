@@ -5,14 +5,16 @@
 // instances as per the user's provided configuration.
 package driver
 
-import "bytes"
-import "encoding/json"
-import "fmt"
-import "io"
-import "io/ioutil"
-import "os"
-import "os/exec"
-import "time"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"time"
+)
 
 // launchFn is a prototype matching launchExecutable(), defined below.
 // An engineer writing tests for the test driver would use customized
