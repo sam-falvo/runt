@@ -3,10 +3,10 @@
 package driver
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
-	"fmt"
 )
 
 type myFileInfo struct {
